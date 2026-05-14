@@ -1,8 +1,13 @@
 package com.imposter.game.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
@@ -23,6 +29,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,6 +65,7 @@ fun RevealScreen(
     var revealing by remember(state.currentRevealIndex) { mutableStateOf(false) }
     var revealed by remember(state.currentRevealIndex) { mutableStateOf(false) }
     val rotation = remember(state.currentRevealIndex) { Animatable(0f) }
+    var photoExpanded by remember(state.currentRevealIndex) { mutableStateOf(false) }
 
     LaunchedEffect(revealing) {
         if (revealing) {
@@ -90,6 +98,11 @@ fun RevealScreen(
             PlayerAvatar(
                 avatarPath = roundPlayer.player.avatarPath,
                 size = 56.dp,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .clickable(enabled = roundPlayer.player.avatarPath != null) {
+                        photoExpanded = true
+                    },
             )
             Spacer(Modifier.height(8.dp))
             Text(
@@ -140,6 +153,28 @@ fun RevealScreen(
             )
             Spacer(Modifier.height(8.dp))
         }
+
+        AnimatedVisibility(
+            visible = photoExpanded && roundPlayer.player.avatarPath != null,
+            enter = fadeIn(tween(180)),
+            exit = fadeOut(tween(150)),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.88f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) { photoExpanded = false },
+                contentAlignment = Alignment.Center,
+            ) {
+                PlayerAvatar(
+                    avatarPath = roundPlayer.player.avatarPath,
+                    size = 280.dp,
+                )
+            }
+        }
     }
 }
 
@@ -153,6 +188,13 @@ private fun FlippableCard(
     back: @Composable () -> Unit,
 ) {
     val showBack = rotation > 90f
+    // pointerInput key is stable across recompositions, so the lambdas it
+    // captures stay alive for the lifetime of the node. Without these
+    // rememberUpdatedState handles, advancing to the next player keeps the
+    // old lambdas active and writes into a MutableState nothing observes —
+    // i.e. the card stops responding to touch (the freeze we hit).
+    val pressStart by rememberUpdatedState(onPressStart)
+    val pressEnd by rememberUpdatedState(onPressEnd)
     Box(
         modifier = modifier
             .graphicsLayer {
@@ -165,7 +207,7 @@ private fun FlippableCard(
                     while (true) {
                         val event = awaitPointerEvent()
                         val pressed = event.changes.any { it.pressed }
-                        if (pressed) onPressStart() else onPressEnd()
+                        if (pressed) pressStart() else pressEnd()
                     }
                 }
             },
