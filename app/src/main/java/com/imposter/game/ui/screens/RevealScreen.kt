@@ -77,7 +77,7 @@ fun RevealScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = "Round ${state.roundNumber}",
+                text = "Runde ${state.roundNumber}",
                 color = TextMuted,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -85,7 +85,7 @@ fun RevealScreen(
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = "Pass the phone to",
+                text = "Reiche das Handy an",
                 color = TextSecondary,
                 fontSize = 16.sp,
             )
@@ -138,13 +138,13 @@ fun RevealScreen(
             Spacer(Modifier.height(20.dp))
 
             PrimaryButton(
-                text = if (state.currentRevealIndex < state.roundPlayers.size - 1) "Pass to next player" else "Start clue round",
+                text = if (state.currentRevealIndex < state.roundPlayers.size - 1) "Weitergeben" else "Hinweisrunde starten",
                 onClick = onNext,
                 enabled = roundPlayer.revealed,
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = if (roundPlayer.revealed) "Don't peek at others' cards!" else "Hold the card to reveal your role",
+                text = if (roundPlayer.revealed) "Nicht auf die Karten der anderen schauen!" else "Karte gedrückt halten, um deine Rolle zu sehen",
                 color = TextMuted,
                 fontSize = 13.sp,
             )
@@ -183,15 +183,15 @@ private fun TapToRevealCard(onPressStart: () -> Unit, onPressEnd: () -> Unit) {
             )
             Spacer(Modifier.height(12.dp))
             Text(
-                text = "HOLD TO REVEAL",
+                text = "HALTEN ZUM AUFDECKEN",
                 color = Color.White,
-                fontSize = 24.sp,
+                fontSize = 22.sp,
                 fontWeight = FontWeight.ExtraBold,
                 letterSpacing = 3.sp,
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Make sure no one else is looking",
+                text = "Achte darauf, dass keiner zuschaut",
                 color = TextSecondary,
                 fontSize = 14.sp,
             )
@@ -222,7 +222,7 @@ private fun RoleCard(role: Role, categoryName: String) {
             )
             Spacer(Modifier.height(12.dp))
             Text(
-                text = if (isImposter) "YOU ARE THE IMPOSTER" else "Your word",
+                text = if (isImposter) "DU BIST DER IMPOSTER" else "Dein Wort",
                 color = Color.White,
                 fontSize = if (isImposter) 22.sp else 18.sp,
                 fontWeight = FontWeight.ExtraBold,
@@ -248,14 +248,14 @@ private fun RoleCard(role: Role, categoryName: String) {
                 }
                 Role.Imposter -> {
                     Text(
-                        text = "Bluff a word that fits the category.\nDon't get caught!",
+                        text = "Bluffe ein Wort, das zur Kategorie passt.\nLass dich nicht erwischen!",
                         color = Color.White,
                         fontSize = 16.sp,
                         textAlign = TextAlign.Center,
                     )
                     Spacer(Modifier.height(16.dp))
                     Text(
-                        text = "Category: $categoryName",
+                        text = "Kategorie: $categoryName",
                         color = Color.White,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,

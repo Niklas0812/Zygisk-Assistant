@@ -72,7 +72,7 @@ fun LobbyScreen(
                 IconCircleButton(icon = Icons.Filled.ArrowBack, onClick = onBack)
                 Spacer(Modifier.weight(1f))
                 Text(
-                    text = "Players",
+                    text = "Spieler",
                     color = Color.White,
                     fontSize = 22.sp,
                 )
@@ -83,7 +83,7 @@ fun LobbyScreen(
             Spacer(Modifier.height(16.dp))
 
             Text(
-                text = "${state.players.size} players · imposters ${imposterText(state)}",
+                text = "${state.players.size} Spieler · Imposter ${imposterText(state)}",
                 color = TextSecondary,
                 fontSize = 15.sp,
                 modifier = Modifier.fillMaxWidth(),
@@ -126,7 +126,7 @@ fun LobbyScreen(
                             )
                             Spacer(Modifier.size(8.dp))
                             Text(
-                                text = if (state.players.size < 16) "Add player" else "Maximum 16 players",
+                                text = if (state.players.size < 16) "Spieler hinzufügen" else "Maximal 16 Spieler",
                                 color = AccentBright,
                                 fontSize = 16.sp,
                             )
@@ -137,7 +137,7 @@ fun LobbyScreen(
 
             if (state.players.size < 3) {
                 Text(
-                    text = "Add at least 3 players to start",
+                    text = "Mindestens 3 Spieler zum Starten",
                     color = TextMuted,
                     fontSize = 14.sp,
                     modifier = Modifier
@@ -148,7 +148,7 @@ fun LobbyScreen(
             }
 
             PrimaryButton(
-                text = "Start Round",
+                text = "Runde starten",
                 onClick = onStart,
                 enabled = state.players.size >= 3,
                 leading = {
@@ -168,8 +168,8 @@ private fun imposterText(state: GameUiState): String {
     val s = state.settings
     return when (s.imposterMode) {
         com.imposter.game.model.ImposterCountMode.FIXED -> s.fixedImposters.toString()
-        com.imposter.game.model.ImposterCountMode.RANDOM -> "random ${s.randomMin}-${s.randomMax}"
-        com.imposter.game.model.ImposterCountMode.AUTO -> "auto"
+        com.imposter.game.model.ImposterCountMode.RANDOM -> "Zufall ${s.randomMin}–${s.randomMax}"
+        com.imposter.game.model.ImposterCountMode.AUTO -> "Auto"
     }
 }
 
@@ -215,7 +215,7 @@ private fun PlayerRow(
             )
             if (score > 0) {
                 Text(
-                    text = "$score pts",
+                    text = "$score Pkt",
                     color = TextMuted,
                     fontSize = 13.sp,
                 )

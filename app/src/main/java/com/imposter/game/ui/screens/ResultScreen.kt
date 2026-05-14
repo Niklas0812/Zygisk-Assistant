@@ -48,10 +48,10 @@ fun ResultScreen(state: GameUiState, onPlayAgain: () -> Unit, onEndSession: () -
     val noImposters = result.imposters.isEmpty()
 
     val headline = when {
-        noImposters -> "FREE ROUND"
-        allImposters -> "ALL IMPOSTERS!"
-        result.crewWon -> "CREW WINS"
-        else -> "IMPOSTERS WIN"
+        noImposters -> "FREIE RUNDE"
+        allImposters -> "ALLE IMPOSTER!"
+        result.crewWon -> "TEAM GEWINNT"
+        else -> "IMPOSTER GEWINNEN"
     }
     val emoji = when {
         noImposters -> "🤝"
@@ -60,10 +60,10 @@ fun ResultScreen(state: GameUiState, onPlayAgain: () -> Unit, onEndSession: () -
         else -> "😈"
     }
     val subtitle = when {
-        noImposters -> "No imposter this round — everyone gets a point!"
-        allImposters -> "Everyone was the imposter. Chaos points for all!"
-        result.crewWon -> "The imposter was caught!"
-        else -> "The imposters slipped away."
+        noImposters -> "Keine Imposter — jeder bekommt einen Punkt!"
+        allImposters -> "Alle waren Imposter — Punkte für alle!"
+        result.crewWon -> "Der Imposter wurde erwischt!"
+        else -> "Die Imposter sind durchgekommen."
     }
 
     GradientBackground(
@@ -114,15 +114,15 @@ fun ResultScreen(state: GameUiState, onPlayAgain: () -> Unit, onEndSession: () -
                     .padding(20.dp),
             ) {
                 Column {
-                    LabelValue("Secret word", result.secretWord, big = true)
+                    LabelValue("Geheimes Wort", result.secretWord, big = true)
                     Spacer(Modifier.height(10.dp))
-                    LabelValue("Category", result.category)
+                    LabelValue("Kategorie", result.category)
                     Spacer(Modifier.height(10.dp))
                     Text(
                         text = when {
-                            result.imposters.isEmpty() -> "Imposters"
+                            result.imposters.isEmpty() -> "Imposter"
                             result.imposters.size == 1 -> "Imposter"
-                            else -> "Imposters (${result.imposters.size})"
+                            else -> "Imposter (${result.imposters.size})"
                         },
                         color = TextSecondary,
                         fontSize = 13.sp,
@@ -132,7 +132,7 @@ fun ResultScreen(state: GameUiState, onPlayAgain: () -> Unit, onEndSession: () -
                     Spacer(Modifier.height(4.dp))
                     if (result.imposters.isEmpty()) {
                         Text(
-                            text = "— none —",
+                            text = "— keiner —",
                             color = TextSecondary,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Medium,
@@ -149,15 +149,20 @@ fun ResultScreen(state: GameUiState, onPlayAgain: () -> Unit, onEndSession: () -
                     }
                     if (result.accusedPlayer != null) {
                         Spacer(Modifier.height(10.dp))
-                        LabelValue("You accused", result.accusedPlayer.name)
+                        LabelValue("Angeklagt", result.accusedPlayer.name)
                     }
                 }
             }
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(16.dp))
+
+            if (state.nextStarter != null) {
+                NextStarterCard(name = state.nextStarter.name)
+                Spacer(Modifier.height(16.dp))
+            }
 
             Text(
-                text = "Scoreboard",
+                text = "PUNKTESTAND",
                 color = TextSecondary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -180,10 +185,46 @@ fun ResultScreen(state: GameUiState, onPlayAgain: () -> Unit, onEndSession: () -
                 }
             }
 
-            PrimaryButton(text = "Play another round", onClick = onPlayAgain)
+            PrimaryButton(text = "Nächste Runde", onClick = onPlayAgain)
             Spacer(Modifier.height(8.dp))
-            SecondaryButton(text = "End session", onClick = onEndSession)
+            SecondaryButton(text = "Sitzung beenden", onClick = onEndSession)
             Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
+private fun NextStarterCard(name: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(
+                Brush.horizontalGradient(
+                    listOf(Gold.copy(alpha = 0.45f), Color(0xFFFB923C).copy(alpha = 0.45f)),
+                ),
+            )
+            .padding(16.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(text = "🎲", fontSize = 36.sp)
+            Spacer(Modifier.size(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "NÄCHSTE RUNDE STARTET",
+                    color = Color.White.copy(alpha = 0.9f),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.sp,
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = name,
+                    color = Color.White,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Black,
+                )
+            }
         }
     }
 }
@@ -253,7 +294,7 @@ private fun ScoreRow(rank: Int, name: String, score: Int) {
         )
         Spacer(Modifier.size(4.dp))
         Text(
-            text = "pts",
+            text = "Pkt",
             color = TextMuted,
             fontSize = 12.sp,
         )

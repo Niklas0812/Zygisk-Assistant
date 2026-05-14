@@ -95,7 +95,7 @@ fun HomeScreen(
                 letterSpacing = 4.sp,
             )
             Text(
-                text = "Party Word Game",
+                text = "Das Partyspiel",
                 color = TextSecondary,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Medium,
@@ -104,7 +104,7 @@ fun HomeScreen(
 
             Spacer(Modifier.height(24.dp))
             Text(
-                text = "One word. One imposter.\nFind the bluffer before they win.",
+                text = "Ein Wort. Ein Hochstapler.\nFindet ihn, bevor er gewinnt.",
                 color = TextSecondary,
                 fontSize = 16.sp,
                 textAlign = TextAlign.Center,
@@ -113,7 +113,7 @@ fun HomeScreen(
             Spacer(Modifier.weight(1f))
 
             PrimaryButton(
-                text = "PLAY",
+                text = "SPIELEN",
                 onClick = onPlay,
                 modifier = Modifier.fillMaxWidth(),
                 leading = {
@@ -125,7 +125,7 @@ fun HomeScreen(
                 },
             )
             SecondaryButton(
-                text = "Settings",
+                text = "Einstellungen",
                 onClick = onSettings,
                 modifier = Modifier.fillMaxWidth(),
             )

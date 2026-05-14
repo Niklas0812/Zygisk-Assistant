@@ -1,68 +1,58 @@
-# Imposter — Party Word Game
+# Imposter — Partyspiel
 
-A pass-and-play Android party game inspired by *Splash – Imposter Game*.
+Eine deutsche Pass-and-Play Android-App inspiriert von *Splash – Imposter Game*.
 
-Everyone except one player (or a few — your choice) sees the same secret word.
-Players take turns saying a one-word clue related to that secret word. The
-imposters have to bluff. After the clue round, everyone votes who they think
-the imposter is. If they catch an imposter, the crew wins. If not, the
-imposters do.
+Alle bis auf einen (oder mehrere — du entscheidest!) sehen das gleiche
+geheime Wort. Reihum sagt jeder ein einzelnes Hinweiswort dazu. Die Imposter
+müssen bluffen. Nach der Hinweisrunde stimmen alle ab, wer der Imposter ist.
+Erwischt das Team einen, gewinnt das Team. Sonst gewinnen die Imposter.
 
 ## Features
 
-- 3–16 players on a single device
-- 10 built-in categories: Animals, Food, Places, Objects, Sports, Movies,
-  Professions, Fruits, Instruments, Tech
-- **Random imposter count** — fixed, random within a range, or auto-scaled
-  to the total number of players each round
-- Hold-to-reveal cards so no one peeks
-- Visible clue order so the round starts in the same spot every time
-- Running scoreboard across rounds
+- 3–16 Spieler auf einem Handy (Pass-and-Play)
+- 11 deutsche Kategorien: Tiere, Essen, Orte, Gegenstände, Sport, Filme,
+  Berufe, Obst, Instrumente, Technik **und „Lustiges"** (generationen­
+  übergreifend lustige Wörter, die sowohl 20- als auch 50-Jährige kennen)
+- **Frei wählbare Imposter-Anzahl**: 0 bis Anzahl Spieler – fix, zufällig
+  oder automatisch skaliert
+- **Optionales Zeitlimit** für die Hinweisrunde mit Pause/Reset und
+  Farb­warnung in den letzten Sekunden
+- **Zufalls-Anzeige am Rundenende**, wer die nächste Runde anfängt
+- Karten zum Aufdecken halten (niemand schaut aus Versehen)
+- Reihenfolge der Spieler einblendbar
+- Laufender Punktestand über alle Runden
 
-## How to play
+## Spielablauf
 
-1. Open the app, tap **PLAY**.
-2. Add player names (the app starts with 4 placeholder seats).
-3. Tap **Settings** to pick categories and choose how many imposters per round
-   (Fixed / Random / Auto).
-4. Tap **Start Round**. Pass the phone. Each player holds the card to see
-   either the **secret word** or the **IMPOSTER** card.
-5. Once everyone's seen their role, the app shows the clue order. Going
-   around the table, each player says a one-word clue.
-6. After clues, tap **Find Imposter** and lock in your group's vote.
-7. The result screen reveals the secret word, the imposter(s), and updates the
-   scoreboard. Play another round or end the session.
+1. Öffne die App und tippe auf **SPIELEN**.
+2. Gib die Namen der Mitspieler ein (3–16).
+3. Über **Einstellungen** Kategorien und Imposter-Anzahl wählen
+   (Fest / Zufall / Auto), Zeitlimit aktivieren bei Bedarf.
+4. **Runde starten**. Reicht das Handy reihum weiter — jeder hält die
+   Karte gedrückt und sieht entweder das geheime Wort oder die
+   **IMPOSTER**-Karte.
+5. Hinweisrunde: jeder sagt EIN Wort zum geheimen Begriff. Imposter bluffen.
+6. **Bereit?** → Tippt auf den Button und stimmt ab.
+7. Auf dem Ergebnisbildschirm: geheimes Wort, Imposter, Punktestand und ein
+   zufällig gewählter Spieler, der die nächste Runde anfängt.
 
-### Scoring
+### Punkte
 
-- **Crew wins (caught an imposter):** every crewmate gains **+1 pt**.
-- **Imposters win (slipped away):** every imposter gains **+2 pts**.
+- **Team gewinnt** (Imposter erwischt): jedes Team-Mitglied **+1 Pkt**.
+- **Imposter gewinnen** (entkommen): jeder Imposter **+2 Pkt**.
+- **Freie Runde** (0 Imposter): alle **+1 Pkt**.
+- **Chaos-Runde** (alle Imposter): alle **+2 Pkt**.
 
-## Build
-
-Requires Android Studio Hedgehog+ or just the Android SDK + a JDK 17.
+## Bauen
 
 ```bash
-./gradlew assembleDebug
-# APK lands in app/build/outputs/apk/debug/app-debug.apk
+./gradlew :app:assembleDebug
+# Ergebnis: app/build/outputs/apk/debug/app-debug.apk
 ```
 
-The wrapper pins Gradle 8.7, AGP 8.5.2, Kotlin 1.9.24, Compose BOM 2024.06.
+Benötigt Android SDK 34 + JDK 17. Pinned: Gradle 8.7, AGP 8.5.2,
+Kotlin 1.9.24, Compose BOM 2024.06.
 
-## Project layout
-
-```
-app/src/main/java/com/imposter/game/
-├── MainActivity.kt          # Compose host + simple screen router
-├── data/WordCategories.kt   # All categories + word lists
-├── model/Models.kt          # Player, Role, GameSettings, WinResult, GamePhase
-├── viewmodel/GameViewModel.kt
-└── ui/
-    ├── components/          # GradientBackground, PrimaryButton, SecondaryButton
-    ├── screens/             # Home, Lobby, Reveal, Clues, Voting, Result, Settings
-    └── theme/               # Colors, Theme, Typography
-```
-
-## License
+## Lizenz
 
 MIT.

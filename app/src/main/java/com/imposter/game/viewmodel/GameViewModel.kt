@@ -26,6 +26,7 @@ data class GameUiState(
     val firstClueGiver: Player? = null,
     val lastWinResult: WinResult? = null,
     val roundNumber: Int = 0,
+    val nextStarter: Player? = null,
 )
 
 class GameViewModel : ViewModel() {
@@ -106,10 +107,19 @@ class GameViewModel : ViewModel() {
         val word = category.words.random()
 
         val imposterCount = computeImposterCount(settings, playerCount)
-        val shuffledIndices = current.players.indices.shuffled()
-        val imposterIndices = shuffledIndices.take(imposterCount).toSet()
 
-        val roundPlayers = current.players.shuffled().mapIndexed { idx, p ->
+        val orderedPlayers = current.players.toMutableList().apply { shuffle() }
+        val forced = current.nextStarter
+        if (forced != null) {
+            val idx = orderedPlayers.indexOfFirst { it.id == forced.id }
+            if (idx > 0) {
+                val target = orderedPlayers.removeAt(idx)
+                orderedPlayers.add(0, target)
+            }
+        }
+        val imposterIndices = orderedPlayers.indices.shuffled().take(imposterCount).toSet()
+
+        val roundPlayers = orderedPlayers.mapIndexed { idx, p ->
             val isImposter = idx in imposterIndices
             RoundPlayer(
                 player = p,
@@ -117,8 +127,7 @@ class GameViewModel : ViewModel() {
             )
         }
 
-        val firstClueGiver = roundPlayers.firstOrNull { it.role !is Role.Imposter }?.player
-            ?: roundPlayers.first().player
+        val firstClueGiver = roundPlayers.firstOrNull()?.player
 
         _state.value = current.copy(
             phase = GamePhase.REVEAL,
@@ -128,6 +137,7 @@ class GameViewModel : ViewModel() {
             category = category,
             firstClueGiver = firstClueGiver,
             roundNumber = current.roundNumber + 1,
+            nextStarter = null,
         )
     }
 
@@ -208,6 +218,7 @@ class GameViewModel : ViewModel() {
             players = updatedPlayers,
             phase = GamePhase.REVEAL_RESULT,
             lastWinResult = result,
+            nextStarter = current.players.randomOrNull(),
         )
     }
 

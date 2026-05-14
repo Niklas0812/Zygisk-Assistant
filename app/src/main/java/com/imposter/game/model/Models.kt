@@ -31,6 +31,8 @@ data class GameSettings(
     val selectedCategoryIds: Set<String> = setOf("tiere", "essen", "orte", "gegenstaende", "sport", "lustiges"),
     val imposterKnowsCategory: Boolean = true,
     val showClueOrder: Boolean = true,
+    val timeLimitEnabled: Boolean = false,
+    val timeLimitSeconds: Int = 60,
 )
 
 enum class GamePhase {

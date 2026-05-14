@@ -1,6 +1,7 @@
 package com.imposter.game.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,9 +20,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.HowToVote
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,9 +46,12 @@ import com.imposter.game.ui.components.PrimaryButton
 import com.imposter.game.ui.theme.Accent
 import com.imposter.game.ui.theme.AccentBright
 import com.imposter.game.ui.theme.BgCard
+import com.imposter.game.ui.theme.Gold
+import com.imposter.game.ui.theme.ImposterRed
 import com.imposter.game.ui.theme.TextMuted
 import com.imposter.game.ui.theme.TextSecondary
 import com.imposter.game.viewmodel.GameUiState
+import kotlinx.coroutines.delay
 
 @Composable
 fun CluesScreen(state: GameUiState, onGoToVote: () -> Unit) {
@@ -47,10 +60,26 @@ fun CluesScreen(state: GameUiState, onGoToVote: () -> Unit) {
     val totalImposters = state.roundPlayers.count { it.role is com.imposter.game.model.Role.Imposter }
     val total = state.roundPlayers.size
     val imposterNote = when {
-        totalImposters == 0 -> "Free round — no imposters. Everyone says one word about the secret."
-        totalImposters >= total -> "Chaos round — everyone is an imposter. Bluff or be exposed!"
-        totalImposters == 1 -> "There is 1 imposter among you."
-        else -> "There are $totalImposters imposters among you."
+        totalImposters == 0 -> "Freie Runde – kein Imposter. Jeder sagt ein Wort zum Begriff."
+        totalImposters >= total -> "Chaos-Runde – alle sind Imposter. Bluffen oder auffliegen!"
+        totalImposters == 1 -> "Unter euch ist 1 Imposter."
+        else -> "Unter euch sind $totalImposters Imposter."
+    }
+
+    val timerEnabled = state.settings.timeLimitEnabled
+    val totalSeconds = state.settings.timeLimitSeconds
+    var secondsLeft by remember(state.roundNumber, totalSeconds, timerEnabled) {
+        mutableIntStateOf(totalSeconds)
+    }
+    var paused by remember(state.roundNumber) { mutableStateOf(false) }
+    val timeUp = timerEnabled && secondsLeft <= 0
+
+    LaunchedEffect(state.roundNumber, timerEnabled, paused) {
+        if (!timerEnabled || paused) return@LaunchedEffect
+        while (secondsLeft > 0) {
+            delay(1000)
+            secondsLeft -= 1
+        }
     }
 
     GradientBackground {
@@ -61,7 +90,7 @@ fun CluesScreen(state: GameUiState, onGoToVote: () -> Unit) {
                 .padding(horizontal = 20.dp, vertical = 16.dp),
         ) {
             Text(
-                text = "Category",
+                text = "Kategorie",
                 color = TextSecondary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
@@ -78,7 +107,20 @@ fun CluesScreen(state: GameUiState, onGoToVote: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center,
             )
-            Spacer(Modifier.height(20.dp))
+
+            if (timerEnabled) {
+                Spacer(Modifier.height(14.dp))
+                TimerBar(
+                    totalSeconds = totalSeconds,
+                    secondsLeft = secondsLeft,
+                    paused = paused,
+                    timeUp = timeUp,
+                    onTogglePause = { paused = !paused },
+                    onReset = { secondsLeft = totalSeconds; paused = false },
+                )
+            }
+
+            Spacer(Modifier.height(16.dp))
 
             Box(
                 modifier = Modifier
@@ -91,7 +133,7 @@ fun CluesScreen(state: GameUiState, onGoToVote: () -> Unit) {
             ) {
                 Column {
                     Text(
-                        text = "Clue Round",
+                        text = "HINWEISRUNDE",
                         color = TextSecondary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -99,7 +141,7 @@ fun CluesScreen(state: GameUiState, onGoToVote: () -> Unit) {
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        text = "Everyone says ONE word related to the secret word.",
+                        text = "Jeder sagt EIN Wort zum geheimen Begriff.",
                         color = Color.White,
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Medium,
@@ -113,7 +155,7 @@ fun CluesScreen(state: GameUiState, onGoToVote: () -> Unit) {
                     if (showOrder && firstName.isNotBlank()) {
                         Spacer(Modifier.height(14.dp))
                         Text(
-                            text = "$firstName goes first.",
+                            text = "$firstName fängt an.",
                             color = AccentBright,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
@@ -126,7 +168,7 @@ fun CluesScreen(state: GameUiState, onGoToVote: () -> Unit) {
 
             if (showOrder) {
                 Text(
-                    text = "Order",
+                    text = "REIHENFOLGE",
                     color = TextSecondary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -149,7 +191,7 @@ fun CluesScreen(state: GameUiState, onGoToVote: () -> Unit) {
             }
 
             PrimaryButton(
-                text = "Everyone Voted? Find Imposter",
+                text = if (timeUp) "Zeit vorbei – Abstimmen!" else "Bereit? Imposter aufdecken",
                 onClick = onGoToVote,
                 leading = {
                     Icon(
@@ -161,7 +203,7 @@ fun CluesScreen(state: GameUiState, onGoToVote: () -> Unit) {
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                text = "Discuss, then vote on who you think is the imposter.",
+                text = "Diskutiert und stimmt ab, wer der Imposter ist.",
                 color = TextMuted,
                 fontSize = 13.sp,
                 textAlign = TextAlign.Center,
@@ -170,6 +212,103 @@ fun CluesScreen(state: GameUiState, onGoToVote: () -> Unit) {
             Spacer(Modifier.height(8.dp))
         }
     }
+}
+
+@Composable
+private fun TimerBar(
+    totalSeconds: Int,
+    secondsLeft: Int,
+    paused: Boolean,
+    timeUp: Boolean,
+    onTogglePause: () -> Unit,
+    onReset: () -> Unit,
+) {
+    val progress = if (totalSeconds <= 0) 0f else (secondsLeft.toFloat() / totalSeconds).coerceIn(0f, 1f)
+    val timeColor = when {
+        timeUp -> ImposterRed
+        secondsLeft <= 10 -> ImposterRed
+        secondsLeft <= 20 -> Gold
+        else -> AccentBright
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(BgCard.copy(alpha = 0.85f))
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = formatClock(secondsLeft),
+                color = timeColor,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.ExtraBold,
+                modifier = Modifier.weight(1f),
+            )
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.08f))
+                    .clickable { onReset() },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Replay,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            Spacer(Modifier.size(8.dp))
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.08f))
+                    .clickable { onTogglePause() },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = if (paused) Icons.Filled.PlayArrow else Icons.Filled.Pause,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(Color.White.copy(alpha = 0.1f)),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(progress)
+                    .height(6.dp)
+                    .background(timeColor),
+            )
+        }
+        if (timeUp) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = "Zeit abgelaufen — jetzt abstimmen!",
+                color = ImposterRed,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+    }
+}
+
+private fun formatClock(seconds: Int): String {
+    val s = seconds.coerceAtLeast(0)
+    val m = s / 60
+    val r = s % 60
+    return "%d:%02d".format(m, r)
 }
 
 @Composable

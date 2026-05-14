@@ -60,7 +60,7 @@ fun VotingScreen(state: GameUiState, onAccuse: (Player?) -> Unit) {
                 .padding(horizontal = 20.dp, vertical = 16.dp),
         ) {
             Text(
-                text = "VOTE",
+                text = "ABSTIMMUNG",
                 color = TextSecondary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
@@ -70,7 +70,7 @@ fun VotingScreen(state: GameUiState, onAccuse: (Player?) -> Unit) {
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                text = "Who is the imposter?",
+                text = "Wer ist der Imposter?",
                 color = Color.White,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.ExtraBold,
@@ -115,7 +115,7 @@ fun VotingScreen(state: GameUiState, onAccuse: (Player?) -> Unit) {
                             )
                             Spacer(Modifier.size(8.dp))
                             Text(
-                                text = "Skip vote (no one)",
+                                text = "Niemanden wählen",
                                 color = TextSecondary,
                                 fontSize = 15.sp,
                             )
@@ -126,7 +126,7 @@ fun VotingScreen(state: GameUiState, onAccuse: (Player?) -> Unit) {
 
             Spacer(Modifier.height(8.dp))
             PrimaryButton(
-                text = "Lock in vote",
+                text = "Abstimmung bestätigen",
                 enabled = selectedId != null,
                 onClick = {
                     val choice = state.roundPlayers.firstOrNull { it.player.id == selectedId }?.player
@@ -135,7 +135,7 @@ fun VotingScreen(state: GameUiState, onAccuse: (Player?) -> Unit) {
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Tip: tie-break with a quick re-vote.",
+                text = "Tipp: bei Gleichstand kurz neu abstimmen.",
                 color = TextMuted,
                 fontSize = 13.sp,
                 textAlign = TextAlign.Center,
@@ -181,7 +181,7 @@ private fun VoteRow(name: String, selected: Boolean, onClick: () -> Unit) {
         )
         if (selected) {
             Text(
-                text = "ACCUSE",
+                text = "ANKLAGE",
                 color = Color.White,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.ExtraBold,

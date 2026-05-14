@@ -5,6 +5,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -67,7 +69,7 @@ fun SettingsScreen(
                 IconCircleButton(icon = Icons.Filled.ArrowBack, onClick = onBack)
                 Spacer(Modifier.weight(1f))
                 Text(
-                    text = "Settings",
+                    text = "Einstellungen",
                     color = Color.White,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
@@ -84,7 +86,7 @@ fun SettingsScreen(
                 contentPadding = PaddingValues(bottom = 24.dp),
             ) {
                 item {
-                    SectionTitle("Imposters")
+                    SectionTitle("Imposter")
                 }
                 item {
                     ImposterModeSelector(
@@ -95,7 +97,7 @@ fun SettingsScreen(
                 when (settings.imposterMode) {
                     ImposterCountMode.FIXED -> item {
                         Stepper(
-                            label = "Imposters per round",
+                            label = "Imposter pro Runde",
                             value = settings.fixedImposters.coerceIn(0, maxImposters),
                             min = 0,
                             max = maxImposters,
@@ -106,7 +108,7 @@ fun SettingsScreen(
                     ImposterCountMode.RANDOM -> {
                         item {
                             Stepper(
-                                label = "Minimum imposters",
+                                label = "Minimum",
                                 value = settings.randomMin.coerceIn(0, maxImposters),
                                 min = 0,
                                 max = settings.randomMax.coerceAtMost(maxImposters),
@@ -115,42 +117,63 @@ fun SettingsScreen(
                         }
                         item {
                             Stepper(
-                                label = "Maximum imposters",
+                                label = "Maximum",
                                 value = settings.randomMax.coerceIn(settings.randomMin, maxImposters),
                                 min = settings.randomMin,
                                 max = maxImposters,
                                 onChange = { onChange(settings.copy(randomMax = it)) },
-                                sublabel = "Picked at random each round (range: $playerCount players max)",
+                                sublabel = "Wird pro Runde zufällig gewählt (max. $playerCount)",
                             )
                         }
                     }
                     ImposterCountMode.AUTO -> item {
                         InfoCard(
-                            title = "Auto-scaled",
-                            text = "Imposter count is randomized each round based on the total players. Bigger groups get more imposters.",
+                            title = "Auto-Modus",
+                            text = "Die Anzahl der Imposter wird pro Runde basierend auf der Spieleranzahl gewürfelt. Mehr Spieler – mehr Imposter.",
                         )
                     }
                 }
 
-                item { SectionTitle("Hints") }
+                item { SectionTitle("Zeitlimit") }
                 item {
                     ToggleRow(
-                        label = "Show clue order",
-                        sublabel = "List the order players speak in",
+                        label = "Zeitlimit",
+                        sublabel = if (settings.timeLimitEnabled)
+                            "Countdown während der Hinweisrunde: ${formatSeconds(settings.timeLimitSeconds)}"
+                        else
+                            "Aus — keine Begrenzung",
+                        checked = settings.timeLimitEnabled,
+                        onChange = { onChange(settings.copy(timeLimitEnabled = it)) },
+                    )
+                }
+                if (settings.timeLimitEnabled) {
+                    item {
+                        TimeLimitChips(
+                            currentSeconds = settings.timeLimitSeconds,
+                            onSelect = { onChange(settings.copy(timeLimitSeconds = it)) },
+                        )
+                    }
+                }
+
+                item { SectionTitle("Hinweise") }
+                item {
+                    ToggleRow(
+                        label = "Reihenfolge anzeigen",
+                        sublabel = "Zeigt, wer in welcher Reihenfolge dran ist",
                         checked = settings.showClueOrder,
                         onChange = { onChange(settings.copy(showClueOrder = it)) },
                     )
                 }
                 item {
                     ToggleRow(
-                        label = "Imposter sees category",
-                        sublabel = "Helps bluffing — easier for imposter",
+                        label = "Imposter sieht Kategorie",
+                        sublabel = "Hilft beim Bluffen — einfacher für den Imposter",
                         checked = settings.imposterKnowsCategory,
                         onChange = { onChange(settings.copy(imposterKnowsCategory = it)) },
                     )
                 }
 
-                item { SectionTitle("Categories") }
+                item { SectionTitle("Kategorien") }
                 items(WordCategories.all, key = { it.id }) { cat ->
                     CategoryRow(
                         category = cat,
@@ -168,10 +191,59 @@ fun SettingsScreen(
 }
 
 private fun describeImposters(count: Int, playerCount: Int): String = when {
-    count <= 0 -> "0 — Safe round, no imposter"
-    count >= playerCount && playerCount > 0 -> "$count — Everyone is the imposter!"
-    count == 1 -> "1 imposter among $playerCount players"
-    else -> "$count imposters among $playerCount players"
+    count <= 0 -> "0 — Freie Runde, kein Imposter"
+    count >= playerCount && playerCount > 0 -> "$count — Alle sind Imposter!"
+    count == 1 -> "1 Imposter unter $playerCount Spielern"
+    else -> "$count Imposter unter $playerCount Spielern"
+}
+
+fun formatSeconds(s: Int): String {
+    val m = s / 60
+    val r = s % 60
+    return if (m > 0) "%d:%02d Min".format(m, r) else "%d Sek".format(r)
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TimeLimitChips(currentSeconds: Int, onSelect: (Int) -> Unit) {
+    val options = listOf(30, 45, 60, 90, 120, 180, 300)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(BgCard)
+            .padding(14.dp),
+    ) {
+        Text(
+            text = "Dauer",
+            color = Color.White,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Spacer(Modifier.height(10.dp))
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            options.forEach { sec ->
+                val active = sec == currentSeconds
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(if (active) Accent else Color.White.copy(alpha = 0.08f))
+                        .clickable { onSelect(sec) }
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                ) {
+                    Text(
+                        text = formatSeconds(sec),
+                        color = if (active) Color.White else TextSecondary,
+                        fontSize = 14.sp,
+                        fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -196,8 +268,8 @@ private fun ImposterModeSelector(mode: ImposterCountMode, onSelect: (ImposterCou
             .padding(6.dp),
     ) {
         listOf(
-            ImposterCountMode.FIXED to "Fixed",
-            ImposterCountMode.RANDOM to "Random",
+            ImposterCountMode.FIXED to "Fest",
+            ImposterCountMode.RANDOM to "Zufall",
             ImposterCountMode.AUTO to "Auto",
         ).forEach { (m, label) ->
             val active = m == mode
@@ -342,7 +414,7 @@ private fun CategoryRow(category: WordCategory, selected: Boolean, onToggle: () 
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                text = "${category.words.size} words",
+                text = "${category.words.size} Wörter",
                 color = TextMuted,
                 fontSize = 13.sp,
             )
