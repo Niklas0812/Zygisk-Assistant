@@ -54,6 +54,39 @@ object AvatarStore {
         try { File(path).delete() } catch (_: Throwable) {}
     }
 
+    fun loadOriented(file: File, maxDimension: Int = 1024): Bitmap? {
+        if (!file.exists() || file.length() == 0L) return null
+        return try {
+            val decoded = decodeSampled(file, maxDimension) ?: return null
+            applyExifRotation(file, decoded)
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
+    fun saveFinalBitmap(context: Context, playerId: Int, bitmap: Bitmap): String? {
+        val targetDir = File(context.filesDir, "avatars").apply { mkdirs() }
+        val targetFile = File(targetDir, "p_$playerId.jpg")
+        return try {
+            val scaled = if (maxOf(bitmap.width, bitmap.height) > MAX_DIMENSION) {
+                val scale = MAX_DIMENSION.toFloat() / maxOf(bitmap.width, bitmap.height)
+                Bitmap.createScaledBitmap(
+                    bitmap,
+                    (bitmap.width * scale).toInt(),
+                    (bitmap.height * scale).toInt(),
+                    true,
+                )
+            } else bitmap
+            FileOutputStream(targetFile).use { out ->
+                scaled.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, out)
+            }
+            if (scaled !== bitmap) scaled.recycle()
+            targetFile.absolutePath
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
     private fun decodeSampled(file: File, maxDim: Int): Bitmap? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(file.absolutePath, bounds)

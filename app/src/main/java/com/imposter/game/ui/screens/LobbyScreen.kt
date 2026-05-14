@@ -76,6 +76,8 @@ fun LobbyScreen(
     val context = LocalContext.current
     var pendingPlayerId by remember { mutableStateOf<Int?>(null) }
     var pendingFile by remember { mutableStateOf<File?>(null) }
+    var editorForPlayerId by remember { mutableStateOf<Int?>(null) }
+    var editorSourceFile by remember { mutableStateOf<File?>(null) }
 
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture(),
@@ -83,17 +85,39 @@ fun LobbyScreen(
         val id = pendingPlayerId
         val file = pendingFile
         if (success && id != null && file != null) {
-            val path = AvatarStore.saveFromCapture(context, id, file)
-            if (path != null) {
-                onSetAvatar(id, path)
-            } else {
-                Toast.makeText(context, "Foto konnte nicht gespeichert werden", Toast.LENGTH_SHORT).show()
-            }
-        } else if (file != null) {
-            file.delete()
+            editorForPlayerId = id
+            editorSourceFile = file
+        } else {
+            file?.delete()
         }
         pendingPlayerId = null
         pendingFile = null
+    }
+
+    val activeEditorFile = editorSourceFile
+    val activeEditorPlayerId = editorForPlayerId
+    if (activeEditorFile != null && activeEditorPlayerId != null) {
+        PhotoEditorScreen(
+            sourceFile = activeEditorFile,
+            onCancel = {
+                activeEditorFile.delete()
+                editorSourceFile = null
+                editorForPlayerId = null
+            },
+            onSave = { bitmap ->
+                val path = AvatarStore.saveFinalBitmap(context, activeEditorPlayerId, bitmap)
+                bitmap.recycle()
+                activeEditorFile.delete()
+                if (path != null) {
+                    onSetAvatar(activeEditorPlayerId, path)
+                } else {
+                    Toast.makeText(context, "Foto konnte nicht gespeichert werden", Toast.LENGTH_SHORT).show()
+                }
+                editorSourceFile = null
+                editorForPlayerId = null
+            },
+        )
+        return
     }
 
     GradientBackground {
