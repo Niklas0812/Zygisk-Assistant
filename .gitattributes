@@ -1,4 +1,6 @@
-# Auto detect text files and perform LF normalization
-* text=auto
-
-gradlew.bat text eol=crlf
+* text=auto eol=lf
+*.jar binary
+*.png binary
+*.webp binary
+*.bat text eol=crlf
+gradlew text eol=lf

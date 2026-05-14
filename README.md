@@ -1,51 +1,68 @@
-<h3 align="center">Zygisk Assistant</h3>
+# Imposter — Party Word Game
 
-  <p align="center">
-    A Zygisk module that aims to hide the existence root and Zygisk.
-    <br />
-    <br />
-    <a href="https://github.com/snake-4/Zygisk-Assistant/issues">Report Bug</a>
-    ·
-    <a href="https://github.com/snake-4/Zygisk-Assistant/issues">Request Feature</a>
-    ·
-    <a href="https://github.com/snake-4/Zygisk-Assistant/releases">Latest Release</a>
-  </p>
-</div>
+A pass-and-play Android party game inspired by *Splash – Imposter Game*.
 
+Everyone except one player (or a few — your choice) sees the same secret word.
+Players take turns saying a one-word clue related to that secret word. The
+imposters have to bluff. After the clue round, everyone votes who they think
+the imposter is. If they catch an imposter, the crew wins. If not, the
+imposters do.
 
-<!-- ABOUT THE PROJECT -->
-## About The Project
+## Features
 
-Using the **release** build is recommended over the debug build. Only use debug builds if you are going to make a bug report.
+- 3–16 players on a single device
+- 10 built-in categories: Animals, Food, Places, Objects, Sports, Movies,
+  Professions, Fruits, Instruments, Tech
+- **Random imposter count** — fixed, random within a range, or auto-scaled
+  to the total number of players each round
+- Hold-to-reveal cards so no one peeks
+- Visible clue order so the round starts in the same spot every time
+- Running scoreboard across rounds
 
-### KernelSU & APatch users:
-1. Install ZygiskNext.
-1. Make sure the option `Umount modules/Exclude modifications` is enabled for the target app in the KernelSU/APatch Manager.
-1. Disable `Enforce DenyList` in ZygiskNext settings if there is one.
+## How to play
 
-### Magisk users:
-1. Update your Magisk to 27.0 or newer for better hiding capabilities. (optional)
-1. Turn on Zygisk in Magisk settings.
-1. Turn off `Enforce DenyList` in Magisk settings.
-1. Add the target app to the deny list unless you're using a Magisk fork with a white list instead.
+1. Open the app, tap **PLAY**.
+2. Add player names (the app starts with 4 placeholder seats).
+3. Tap **Settings** to pick categories and choose how many imposters per round
+   (Fixed / Random / Auto).
+4. Tap **Start Round**. Pass the phone. Each player holds the card to see
+   either the **secret word** or the **IMPOSTER** card.
+5. Once everyone's seen their role, the app shows the clue order. Going
+   around the table, each player says a one-word clue.
+6. After clues, tap **Find Imposter** and lock in your group's vote.
+7. The result screen reveals the secret word, the imposter(s), and updates the
+   scoreboard. Play another round or end the session.
 
+### Scoring
 
-<!-- CONTRIBUTING -->
-## Contributing
+- **Crew wins (caught an imposter):** every crewmate gains **+1 pt**.
+- **Imposters win (slipped away):** every imposter gains **+2 pts**.
 
-Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+## Build
 
-If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply open an issue with the tag "enhancement".
-Don't forget to give the project a star! Thanks again!
+Requires Android Studio Hedgehog+ or just the Android SDK + a JDK 17.
 
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/FeatureName`)
-3. Commit your Changes (`git commit -m 'Add some FeatureName'`)
-4. Push to the Branch (`git push origin feature/FeatureName`)
-5. Open a Pull Request
+```bash
+./gradlew assembleDebug
+# APK lands in app/build/outputs/apk/debug/app-debug.apk
+```
 
+The wrapper pins Gradle 8.7, AGP 8.5.2, Kotlin 1.9.24, Compose BOM 2024.06.
 
-<!-- LICENSE -->
+## Project layout
+
+```
+app/src/main/java/com/imposter/game/
+├── MainActivity.kt          # Compose host + simple screen router
+├── data/WordCategories.kt   # All categories + word lists
+├── model/Models.kt          # Player, Role, GameSettings, WinResult, GamePhase
+├── viewmodel/GameViewModel.kt
+└── ui/
+    ├── components/          # GradientBackground, PrimaryButton, SecondaryButton
+    ├── screens/             # Home, Lobby, Reveal, Clues, Voting, Result, Settings
+    └── theme/               # Colors, Theme, Typography
+```
+
 ## License
 
-Distributed under the MIT License. See `LICENSE` for more information.
+MIT.
