@@ -114,13 +114,28 @@ fun PhotoEditorScreen(
     val stickers = remember { mutableStateListOf<StickerInstance>() }
     var stickerIdSeq by remember { mutableIntStateOf(1) }
     var processing by remember { mutableStateOf(false) }
+    var activeEffectIds by remember { mutableStateOf(emptySet<String>()) }
     val scope = rememberCoroutineScope()
 
-    fun applyDistort(effect: DistortEffect) {
+    fun recomputeBitmap(targetIds: Set<String>) {
         if (processing) return
         processing = true
         scope.launch {
-            val result = withContext(Dispatchers.Default) { effect.apply(workingBitmap) }
+            val result = withContext(Dispatchers.Default) {
+                if (targetIds.isEmpty()) {
+                    originalBitmap.copy(Bitmap.Config.ARGB_8888, false)
+                } else {
+                    var b: Bitmap = originalBitmap.copy(Bitmap.Config.ARGB_8888, false)
+                    DistortEffects.all.forEach { effect ->
+                        if (effect.id in targetIds) {
+                            val next = effect.apply(b)
+                            if (next !== b) b.recycle()
+                            b = next
+                        }
+                    }
+                    b
+                }
+            }
             if (workingBitmap !== originalBitmap) workingBitmap.recycle()
             workingBitmap = result
             imageBitmap = result.asImageBitmap()
@@ -128,11 +143,22 @@ fun PhotoEditorScreen(
         }
     }
 
+    fun toggleDistort(effect: DistortEffect) {
+        if (processing) return
+        val next = activeEffectIds.toMutableSet().apply {
+            if (effect.id in this) remove(effect.id) else add(effect.id)
+        }
+        activeEffectIds = next
+        recomputeBitmap(next)
+    }
+
     fun resetEdits() {
+        if (processing) return
         if (workingBitmap !== originalBitmap) workingBitmap.recycle()
         workingBitmap = originalBitmap
         imageBitmap = originalBitmap.asImageBitmap()
         stickers.clear()
+        activeEffectIds = emptySet()
     }
 
     GradientBackground {
@@ -235,8 +261,12 @@ fun PhotoEditorScreen(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 items(DistortEffects.all, key = { it.id }) { effect ->
-                    DistortButton(effect = effect, enabled = !processing) {
-                        applyDistort(effect)
+                    DistortButton(
+                        effect = effect,
+                        selected = effect.id in activeEffectIds,
+                        enabled = !processing,
+                    ) {
+                        toggleDistort(effect)
                     }
                 }
             }
@@ -368,7 +398,12 @@ private fun EmojiButton(emoji: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun DistortButton(effect: DistortEffect, enabled: Boolean, onClick: () -> Unit) {
+private fun DistortButton(
+    effect: DistortEffect,
+    selected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
@@ -379,8 +414,12 @@ private fun DistortButton(effect: DistortEffect, enabled: Boolean, onClick: () -
             modifier = Modifier
                 .size(52.dp)
                 .clip(RoundedCornerShape(14.dp))
-                .background(BgCard)
-                .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(14.dp)),
+                .background(if (selected) Accent.copy(alpha = 0.25f) else BgCard)
+                .border(
+                    width = if (selected) 2.dp else 1.dp,
+                    color = if (selected) AccentBright else Color.White.copy(alpha = 0.05f),
+                    shape = RoundedCornerShape(14.dp),
+                ),
             contentAlignment = Alignment.Center,
         ) {
             Text(text = effect.emoji, fontSize = 26.sp)
@@ -388,9 +427,9 @@ private fun DistortButton(effect: DistortEffect, enabled: Boolean, onClick: () -
         Spacer(Modifier.height(4.dp))
         Text(
             text = effect.name,
-            color = TextSecondary,
+            color = if (selected) AccentBright else TextSecondary,
             fontSize = 11.sp,
-            fontWeight = FontWeight.Medium,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
         )
     }
 }
