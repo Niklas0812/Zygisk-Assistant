@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.imposter.game.model.Player
 import com.imposter.game.ui.components.GradientBackground
+import com.imposter.game.ui.components.PlayerAvatar
 import com.imposter.game.ui.components.PrimaryButton
 import com.imposter.game.ui.components.SecondaryButton
 import com.imposter.game.ui.theme.Accent
@@ -87,6 +88,7 @@ fun VotingScreen(state: GameUiState, onAccuse: (Player?) -> Unit) {
                 items(state.roundPlayers, key = { it.player.id }) { rp ->
                     VoteRow(
                         name = rp.player.name,
+                        avatarPath = rp.player.avatarPath,
                         selected = selectedId == rp.player.id,
                         onClick = { selectedId = rp.player.id },
                     )
@@ -147,7 +149,7 @@ fun VotingScreen(state: GameUiState, onAccuse: (Player?) -> Unit) {
 }
 
 @Composable
-private fun VoteRow(name: String, selected: Boolean, onClick: () -> Unit) {
+private fun VoteRow(name: String, avatarPath: String?, selected: Boolean, onClick: () -> Unit) {
     val bg = if (selected) ImposterRed.copy(alpha = 0.85f) else BgCard
     Row(
         modifier = Modifier
@@ -158,19 +160,11 @@ private fun VoteRow(name: String, selected: Boolean, onClick: () -> Unit) {
             .padding(horizontal = 14.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier = Modifier
-                .size(42.dp)
-                .clip(CircleShape)
-                .background(if (selected) Color.White.copy(alpha = 0.18f) else Accent.copy(alpha = 0.25f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Person,
-                contentDescription = null,
-                tint = if (selected) Color.White else AccentBright,
-            )
-        }
+        PlayerAvatar(
+            avatarPath = avatarPath,
+            size = 42.dp,
+            tint = if (selected) Color.White else AccentBright,
+        )
         Spacer(Modifier.size(14.dp))
         Text(
             text = name,

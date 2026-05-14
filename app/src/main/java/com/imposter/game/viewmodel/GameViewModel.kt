@@ -2,6 +2,7 @@ package com.imposter.game.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import com.imposter.game.data.AvatarStore
 import com.imposter.game.data.UsedWordsRepository
 import com.imposter.game.data.WordCategories
 import com.imposter.game.data.WordCategory
@@ -59,8 +60,22 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun removePlayer(id: Int) {
+        val target = _state.value.players.firstOrNull { it.id == id }
+        AvatarStore.delete(target?.avatarPath)
         _state.value = _state.value.copy(players = _state.value.players.filter { it.id != id })
     }
+
+    fun setAvatar(id: Int, path: String?) {
+        val current = _state.value.players.firstOrNull { it.id == id }
+        if (current?.avatarPath != null && current.avatarPath != path) {
+            AvatarStore.delete(current.avatarPath)
+        }
+        _state.value = _state.value.copy(
+            players = _state.value.players.map { if (it.id == id) it.copy(avatarPath = path) else it },
+        )
+    }
+
+    fun clearAvatar(id: Int) = setAvatar(id, null)
 
     fun renamePlayer(id: Int, name: String) {
         _state.value = _state.value.copy(

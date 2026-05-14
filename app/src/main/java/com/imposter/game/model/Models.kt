@@ -3,7 +3,8 @@ package com.imposter.game.model
 data class Player(
     val id: Int,
     val name: String,
-    var score: Int = 0,
+    val score: Int = 0,
+    val avatarPath: String? = null,
 )
 
 sealed class Role {

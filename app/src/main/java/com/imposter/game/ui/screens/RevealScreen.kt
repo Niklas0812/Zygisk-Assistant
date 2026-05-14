@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.imposter.game.model.Role
 import com.imposter.game.ui.components.GradientBackground
+import com.imposter.game.ui.components.PlayerAvatar
 import com.imposter.game.ui.components.PrimaryButton
 import com.imposter.game.ui.theme.Accent
 import com.imposter.game.ui.theme.AccentBright
@@ -85,16 +86,21 @@ fun RevealScreen(
                 fontWeight = FontWeight.SemiBold,
                 letterSpacing = 2.sp,
             )
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(8.dp))
+            PlayerAvatar(
+                avatarPath = roundPlayer.player.avatarPath,
+                size = 56.dp,
+            )
+            Spacer(Modifier.height(8.dp))
             Text(
                 text = "Handy an",
                 color = TextSecondary,
-                fontSize = 16.sp,
+                fontSize = 14.sp,
             )
             Text(
                 text = roundPlayer.player.name,
                 color = Color.White,
-                fontSize = 30.sp,
+                fontSize = 28.sp,
                 fontWeight = FontWeight.ExtraBold,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 12.dp),

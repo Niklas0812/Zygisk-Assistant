@@ -112,6 +112,7 @@ private fun AppRoot(viewModel: GameViewModel) {
                 onAddPlayer = { viewModel.addPlayer() },
                 onRemovePlayer = { viewModel.removePlayer(it) },
                 onRename = { id, name -> viewModel.renamePlayer(id, name) },
+                onSetAvatar = { id, path -> viewModel.setAvatar(id, path) },
                 onOpenSettings = { showSettings = true },
                 onBack = { showHome = true },
                 onStart = { viewModel.startRound() },

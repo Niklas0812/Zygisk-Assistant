@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.imposter.game.model.Player
 import com.imposter.game.ui.components.GradientBackground
+import com.imposter.game.ui.components.PlayerAvatar
 import com.imposter.game.ui.components.PrimaryButton
 import com.imposter.game.ui.components.SecondaryButton
 import com.imposter.game.ui.theme.CrewGreen
@@ -222,6 +223,7 @@ fun ResultScreen(state: GameUiState, onPlayAgain: () -> Unit, onEndSession: () -
                         rank = ranked.indexOf(p) + 1,
                         name = p.name,
                         score = p.score,
+                        avatarPath = p.avatarPath,
                     )
                 }
             }
@@ -414,7 +416,7 @@ private fun LabelValue(label: String, value: String, big: Boolean = false) {
 }
 
 @Composable
-private fun ScoreRow(rank: Int, name: String, score: Int) {
+private fun ScoreRow(rank: Int, name: String, score: Int, avatarPath: String?) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -444,7 +446,9 @@ private fun ScoreRow(rank: Int, name: String, score: Int) {
                 fontSize = 14.sp,
             )
         }
-        Spacer(Modifier.size(12.dp))
+        Spacer(Modifier.size(10.dp))
+        PlayerAvatar(avatarPath = avatarPath, size = 32.dp)
+        Spacer(Modifier.size(10.dp))
         Text(
             text = name,
             color = Color.White,

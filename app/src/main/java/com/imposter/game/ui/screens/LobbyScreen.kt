@@ -1,7 +1,12 @@
 package com.imposter.game.ui.screens
 
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,29 +29,38 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.imposter.game.data.AvatarStore
 import com.imposter.game.ui.components.GradientBackground
+import com.imposter.game.ui.components.PlayerAvatar
 import com.imposter.game.ui.components.PrimaryButton
 import com.imposter.game.ui.theme.Accent
 import com.imposter.game.ui.theme.AccentBright
 import com.imposter.game.ui.theme.BgCard
+import com.imposter.game.ui.theme.BgMid
 import com.imposter.game.ui.theme.TextMuted
 import com.imposter.game.ui.theme.TextSecondary
 import com.imposter.game.viewmodel.GameUiState
+import java.io.File
 
 @Composable
 fun LobbyScreen(
@@ -54,10 +68,34 @@ fun LobbyScreen(
     onAddPlayer: () -> Unit,
     onRemovePlayer: (Int) -> Unit,
     onRename: (Int, String) -> Unit,
+    onSetAvatar: (Int, String?) -> Unit,
     onOpenSettings: () -> Unit,
     onBack: () -> Unit,
     onStart: () -> Unit,
 ) {
+    val context = LocalContext.current
+    var pendingPlayerId by remember { mutableStateOf<Int?>(null) }
+    var pendingFile by remember { mutableStateOf<File?>(null) }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture(),
+    ) { success ->
+        val id = pendingPlayerId
+        val file = pendingFile
+        if (success && id != null && file != null) {
+            val path = AvatarStore.saveFromCapture(context, id, file)
+            if (path != null) {
+                onSetAvatar(id, path)
+            } else {
+                Toast.makeText(context, "Foto konnte nicht gespeichert werden", Toast.LENGTH_SHORT).show()
+            }
+        } else if (file != null) {
+            file.delete()
+        }
+        pendingPlayerId = null
+        pendingFile = null
+    }
+
     GradientBackground {
         Column(
             modifier = Modifier
@@ -103,9 +141,24 @@ fun LobbyScreen(
                     PlayerRow(
                         name = player.name,
                         score = player.score,
+                        avatarPath = player.avatarPath,
                         canRemove = state.players.size > 3,
                         onRename = { onRename(player.id, it) },
                         onRemove = { onRemovePlayer(player.id) },
+                        onCamera = {
+                            val (uri, file) = AvatarStore.createCaptureTarget(context)
+                            pendingPlayerId = player.id
+                            pendingFile = file
+                            try {
+                                cameraLauncher.launch(uri)
+                            } catch (_: Throwable) {
+                                Toast.makeText(context, "Keine Kamera-App gefunden", Toast.LENGTH_SHORT).show()
+                                pendingPlayerId = null
+                                pendingFile = null
+                                file.delete()
+                            }
+                        },
+                        onClearPhoto = { onSetAvatar(player.id, null) },
                     )
                 }
                 item {
@@ -177,9 +230,12 @@ private fun imposterText(state: GameUiState): String {
 private fun PlayerRow(
     name: String,
     score: Int,
+    avatarPath: String?,
     canRemove: Boolean,
     onRename: (String) -> Unit,
     onRemove: () -> Unit,
+    onCamera: () -> Unit,
+    onClearPhoto: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -189,19 +245,11 @@ private fun PlayerRow(
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(Accent.copy(alpha = 0.25f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Person,
-                contentDescription = null,
-                tint = AccentBright,
-            )
-        }
+        AvatarWithCameraBadge(
+            avatarPath = avatarPath,
+            onCamera = onCamera,
+            onLongPress = onClearPhoto,
+        )
         Spacer(Modifier.size(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             BasicTextField(
@@ -223,6 +271,48 @@ private fun PlayerRow(
         }
         if (canRemove) {
             IconCircleButton(icon = Icons.Filled.Close, onClick = onRemove, size = 36.dp)
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun AvatarWithCameraBadge(
+    avatarPath: String?,
+    onCamera: () -> Unit,
+    onLongPress: () -> Unit,
+) {
+    Box(modifier = Modifier.size(52.dp)) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .size(48.dp)
+                .clip(CircleShape)
+                .combinedClickable(
+                    onLongClick = onLongPress,
+                    onClick = onCamera,
+                ),
+        ) {
+            PlayerAvatar(
+                avatarPath = avatarPath,
+                size = 48.dp,
+            )
+        }
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .size(22.dp)
+                .clip(CircleShape)
+                .background(AccentBright)
+                .clickable { onCamera() },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.PhotoCamera,
+                contentDescription = null,
+                tint = BgMid,
+                modifier = Modifier.size(14.dp),
+            )
         }
     }
 }
