@@ -2,14 +2,16 @@ package com.imposter.game.ui.screens
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -17,6 +19,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
@@ -27,42 +30,70 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Flip
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RotateRight
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.imposter.game.data.AvatarStore
-import com.imposter.game.data.PhotoEffect
-import com.imposter.game.data.PhotoEffects
+import com.imposter.game.data.DistortEffect
+import com.imposter.game.data.DistortEffects
+import com.imposter.game.data.StickerCatalog
 import com.imposter.game.ui.components.GradientBackground
 import com.imposter.game.ui.components.PrimaryButton
 import com.imposter.game.ui.components.SecondaryButton
 import com.imposter.game.ui.theme.Accent
 import com.imposter.game.ui.theme.AccentBright
 import com.imposter.game.ui.theme.BgCard
+import com.imposter.game.ui.theme.ImposterRed
 import com.imposter.game.ui.theme.TextMuted
 import com.imposter.game.ui.theme.TextSecondary
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
+
+class StickerInstance(
+    val id: Long,
+    val emoji: String,
+    initialNormX: Float = 0.5f,
+    initialNormY: Float = 0.5f,
+    initialScale: Float = 1f,
+    initialRotation: Float = 0f,
+) {
+    var normX by mutableStateOf(initialNormX)
+    var normY by mutableStateOf(initialNormY)
+    var scale by mutableStateOf(initialScale)
+    var rotation by mutableStateOf(initialRotation)
+}
 
 @Composable
 fun PhotoEditorScreen(
@@ -70,19 +101,39 @@ fun PhotoEditorScreen(
     onCancel: () -> Unit,
     onSave: (Bitmap) -> Unit,
 ) {
-    val source = remember(sourceFile.absolutePath) {
-        AvatarStore.loadOriented(sourceFile, maxDimension = 1024)
+    val originalBitmap = remember(sourceFile.absolutePath) {
+        AvatarStore.loadOriented(sourceFile, maxDimension = 768)
     }
-    if (source == null) {
+    if (originalBitmap == null) {
         LaunchedEffect(Unit) { onCancel() }
         return
     }
-    val sourceImageBitmap = remember(source) { source.asImageBitmap() }
 
-    var selected by remember { mutableStateOf(PhotoEffects.identity) }
-    var rotation by remember { mutableIntStateOf(0) }
-    var flipped by remember { mutableStateOf(false) }
-    val colorMatrix = remember(selected) { ColorMatrix(selected.matrix.copyOf()) }
+    var workingBitmap by remember { mutableStateOf(originalBitmap) }
+    var imageBitmap by remember { mutableStateOf(workingBitmap.asImageBitmap()) }
+    val stickers = remember { mutableStateListOf<StickerInstance>() }
+    var stickerIdSeq by remember { mutableIntStateOf(1) }
+    var processing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    fun applyDistort(effect: DistortEffect) {
+        if (processing) return
+        processing = true
+        scope.launch {
+            val result = withContext(Dispatchers.Default) { effect.apply(workingBitmap) }
+            if (workingBitmap !== originalBitmap) workingBitmap.recycle()
+            workingBitmap = result
+            imageBitmap = result.asImageBitmap()
+            processing = false
+        }
+    }
+
+    fun resetEdits() {
+        if (workingBitmap !== originalBitmap) workingBitmap.recycle()
+        workingBitmap = originalBitmap
+        imageBitmap = originalBitmap.asImageBitmap()
+        stickers.clear()
+    }
 
     GradientBackground {
         Column(
@@ -98,98 +149,95 @@ fun PhotoEditorScreen(
                     text = "Foto bearbeiten",
                     color = Color.White,
                     fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                 )
                 Spacer(Modifier.weight(1f))
-                Spacer(Modifier.size(44.dp))
-            }
-
-            Spacer(Modifier.height(20.dp))
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.Center,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(260.dp)
-                        .clip(CircleShape)
-                        .background(Color.Black.copy(alpha = 0.35f)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Image(
-                        bitmap = sourceImageBitmap,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        colorFilter = ColorFilter.colorMatrix(colorMatrix),
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer {
-                                rotationZ = rotation.toFloat()
-                                scaleX = if (flipped) -1f else 1f
-                            },
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(14.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = selected.emoji + "  " + selected.name,
-                    color = AccentBright,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                )
+                IconCircleButton(icon = Icons.Filled.Refresh, onClick = ::resetEdits)
             }
 
             Spacer(Modifier.height(16.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp),
+                contentAlignment = Alignment.Center,
             ) {
-                ActionPill(
-                    icon = Icons.Filled.RotateRight,
-                    label = "Drehen",
-                    modifier = Modifier.weight(1f),
-                    onClick = { rotation = (rotation + 90) % 360 },
+                PreviewCanvas(
+                    imageBitmap = imageBitmap,
+                    stickers = stickers,
+                    onRemoveSticker = { stickers.remove(it) },
                 )
-                ActionPill(
-                    icon = Icons.Filled.Flip,
-                    label = if (flipped) "Spiegel an" else "Spiegeln",
-                    modifier = Modifier.weight(1f),
-                    onClick = { flipped = !flipped },
-                )
+                if (processing) {
+                    CircularProgressIndicator(color = AccentBright)
+                }
             }
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(14.dp))
+            if (stickers.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(BgCard)
+                            .clickable { stickers.clear() }
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Delete,
+                            contentDescription = null,
+                            tint = ImposterRed,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Spacer(Modifier.size(6.dp))
+                        Text(
+                            text = "Sticker entfernen",
+                            color = ImposterRed,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+            }
 
-            Text(
-                text = "EFFEKTE",
-                color = TextSecondary,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 3.sp,
-            )
-            Spacer(Modifier.height(10.dp))
-
+            SectionLabel("Sticker")
+            Spacer(Modifier.height(6.dp))
             LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(horizontal = 2.dp),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                items(PhotoEffects.all, key = { it.id }) { effect ->
-                    EffectChip(
-                        effect = effect,
-                        sourceBitmap = sourceImageBitmap,
-                        selected = effect.id == selected.id,
-                        onClick = { selected = effect },
-                    )
+                items(StickerCatalog.emojis) { emoji ->
+                    EmojiButton(emoji = emoji) {
+                        stickers.add(
+                            StickerInstance(
+                                id = stickerIdSeq.toLong(),
+                                emoji = emoji,
+                            ),
+                        )
+                        stickerIdSeq += 1
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(14.dp))
+
+            SectionLabel("Verzerrung")
+            Spacer(Modifier.height(6.dp))
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(horizontal = 2.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                items(DistortEffects.all, key = { it.id }) { effect ->
+                    DistortButton(effect = effect, enabled = !processing) {
+                        applyDistort(effect)
+                    }
                 }
             }
 
@@ -205,110 +253,169 @@ fun PhotoEditorScreen(
                     )
                 },
                 onClick = {
-                    val final = bakeBitmap(
-                        source = source,
-                        matrix = selected.matrix,
-                        rotation = rotation,
-                        flipped = flipped,
-                    )
-                    onSave(final)
+                    val finalBitmap = bakeStickers(workingBitmap, stickers.toList())
+                    onSave(finalBitmap)
                 },
             )
             Spacer(Modifier.height(8.dp))
-            SecondaryButton(
-                text = "Verwerfen",
-                onClick = onCancel,
-            )
+            SecondaryButton(text = "Verwerfen", onClick = onCancel)
             Spacer(Modifier.height(8.dp))
         }
     }
 }
 
 @Composable
-private fun EffectChip(
-    effect: PhotoEffect,
-    sourceBitmap: androidx.compose.ui.graphics.ImageBitmap,
-    selected: Boolean,
-    onClick: () -> Unit,
+private fun PreviewCanvas(
+    imageBitmap: ImageBitmap,
+    stickers: SnapshotStateList<StickerInstance>,
+    onRemoveSticker: (StickerInstance) -> Unit,
 ) {
-    val matrix = remember(effect.id) { ColorMatrix(effect.matrix.copyOf()) }
-    Column(
+    BoxWithConstraints(
         modifier = Modifier
-            .clickable { onClick() }
-            .padding(horizontal = 2.dp),
+            .size(260.dp)
+            .clip(CircleShape)
+            .background(Color.Black.copy(alpha = 0.35f)),
+    ) {
+        val density = LocalDensity.current
+        val canvasSizePx = with(density) { 260.dp.toPx() }
+
+        Image(
+            bitmap = imageBitmap,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+        )
+
+        stickers.forEach { sticker ->
+            StickerView(
+                sticker = sticker,
+                canvasSizePx = canvasSizePx,
+                onDoubleTap = { onRemoveSticker(sticker) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun StickerView(
+    sticker: StickerInstance,
+    canvasSizePx: Float,
+    onDoubleTap: () -> Unit,
+) {
+    val density = LocalDensity.current
+    val baseSizeDp = 56.dp
+    val baseSizePx = with(density) { baseSizeDp.toPx() }
+
+    Box(
+        modifier = Modifier
+            .offset {
+                IntOffset(
+                    x = (sticker.normX * canvasSizePx - baseSizePx / 2).toInt(),
+                    y = (sticker.normY * canvasSizePx - baseSizePx / 2).toInt(),
+                )
+            }
+            .size(baseSizeDp)
+            .graphicsLayer {
+                scaleX = sticker.scale
+                scaleY = sticker.scale
+                rotationZ = sticker.rotation
+            }
+            .pointerInput(sticker.id) {
+                detectTransformGestures { _, pan, zoom, rotation ->
+                    val newScale = (sticker.scale * zoom).coerceIn(0.4f, 4f)
+                    sticker.scale = newScale
+                    sticker.rotation += rotation
+                    sticker.normX = (sticker.normX + pan.x / canvasSizePx).coerceIn(0.05f, 0.95f)
+                    sticker.normY = (sticker.normY + pan.y / canvasSizePx).coerceIn(0.05f, 0.95f)
+                }
+            }
+            .pointerInput(sticker.id) {
+                detectTapGestures(
+                    onDoubleTap = { onDoubleTap() },
+                )
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text = sticker.emoji, fontSize = 44.sp)
+    }
+}
+
+@Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text = text,
+        color = TextMuted,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = 1.5.sp,
+        modifier = Modifier.padding(start = 2.dp),
+    )
+}
+
+@Composable
+private fun EmojiButton(emoji: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(52.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(BgCard)
+            .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(14.dp))
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text = emoji, fontSize = 28.sp)
+    }
+}
+
+@Composable
+private fun DistortButton(effect: DistortEffect, enabled: Boolean, onClick: () -> Unit) {
+    Column(
         horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clickable(enabled = enabled) { onClick() }
+            .padding(2.dp),
     ) {
         Box(
             modifier = Modifier
-                .size(64.dp)
-                .clip(CircleShape)
-                .border(
-                    width = if (selected) 3.dp else 1.dp,
-                    color = if (selected) AccentBright else Color.White.copy(alpha = 0.15f),
-                    shape = CircleShape,
-                ),
+                .size(52.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(BgCard)
+                .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(14.dp)),
+            contentAlignment = Alignment.Center,
         ) {
-            Image(
-                bitmap = sourceBitmap,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                colorFilter = ColorFilter.colorMatrix(matrix),
-                modifier = Modifier.fillMaxSize(),
-            )
+            Text(text = effect.emoji, fontSize = 26.sp)
         }
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(4.dp))
         Text(
             text = effect.name,
-            color = if (selected) AccentBright else TextMuted,
+            color = TextSecondary,
             fontSize = 11.sp,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            fontWeight = FontWeight.Medium,
         )
     }
 }
 
-@Composable
-private fun ActionPill(
-    icon: ImageVector,
-    label: String,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(BgCard)
-            .clickable { onClick() }
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
-    ) {
-        Icon(imageVector = icon, contentDescription = null, tint = AccentBright)
-        Spacer(Modifier.size(8.dp))
-        Text(text = label, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+private fun bakeStickers(base: Bitmap, stickers: List<StickerInstance>): Bitmap {
+    val out = base.copy(Bitmap.Config.ARGB_8888, true)
+    if (stickers.isEmpty()) return out
+    val canvas = Canvas(out)
+    val baseSize = base.width * 0.22f
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textAlign = Paint.Align.CENTER
+        color = android.graphics.Color.WHITE
     }
-}
-
-private fun bakeBitmap(
-    source: Bitmap,
-    matrix: FloatArray,
-    rotation: Int,
-    flipped: Boolean,
-): Bitmap {
-    val androidMatrix = android.graphics.Matrix().apply {
-        if (flipped) preScale(-1f, 1f)
-        if (rotation != 0) postRotate(rotation.toFloat())
+    stickers.forEach { s ->
+        val px = s.normX * base.width
+        val py = s.normY * base.height
+        val sz = baseSize * s.scale
+        paint.textSize = sz
+        canvas.save()
+        canvas.translate(px, py)
+        canvas.rotate(s.rotation)
+        val metrics = paint.fontMetrics
+        val baseline = -(metrics.ascent + metrics.descent) / 2f
+        canvas.drawText(s.emoji, 0f, baseline, paint)
+        canvas.restore()
     }
-    val transformed = if (!androidMatrix.isIdentity) {
-        Bitmap.createBitmap(source, 0, 0, source.width, source.height, androidMatrix, true)
-    } else source
-    val output = Bitmap.createBitmap(transformed.width, transformed.height, Bitmap.Config.ARGB_8888)
-    val canvas = Canvas(output)
-    val paint = Paint().apply {
-        isAntiAlias = true
-        isFilterBitmap = true
-        colorFilter = ColorMatrixColorFilter(matrix)
-    }
-    canvas.drawBitmap(transformed, 0f, 0f, paint)
-    if (transformed !== source) transformed.recycle()
-    return output
+    return out
 }
