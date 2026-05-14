@@ -43,6 +43,28 @@ fun ResultScreen(state: GameUiState, onPlayAgain: () -> Unit, onEndSession: () -
     val result = state.lastWinResult ?: return
     val winColor = if (result.crewWon) CrewGreen else ImposterRed
     val ranked = state.players.sortedByDescending { it.score }
+    val totalPlayers = state.players.size
+    val allImposters = result.imposters.size == totalPlayers && totalPlayers > 0
+    val noImposters = result.imposters.isEmpty()
+
+    val headline = when {
+        noImposters -> "FREE ROUND"
+        allImposters -> "ALL IMPOSTERS!"
+        result.crewWon -> "CREW WINS"
+        else -> "IMPOSTERS WIN"
+    }
+    val emoji = when {
+        noImposters -> "🤝"
+        allImposters -> "🤯"
+        result.crewWon -> "🎉"
+        else -> "😈"
+    }
+    val subtitle = when {
+        noImposters -> "No imposter this round — everyone gets a point!"
+        allImposters -> "Everyone was the imposter. Chaos points for all!"
+        result.crewWon -> "The imposter was caught!"
+        else -> "The imposters slipped away."
+    }
 
     GradientBackground(
         topColor = winColor.copy(alpha = 0.35f),
@@ -56,12 +78,12 @@ fun ResultScreen(state: GameUiState, onPlayAgain: () -> Unit, onEndSession: () -
         ) {
             Spacer(Modifier.height(8.dp))
             Text(
-                text = if (result.crewWon) "🎉" else "😈",
+                text = emoji,
                 fontSize = 64.sp,
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                text = if (result.crewWon) "CREW WINS" else "IMPOSTERS WIN",
+                text = headline,
                 color = Color.White,
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Black,
@@ -69,7 +91,7 @@ fun ResultScreen(state: GameUiState, onPlayAgain: () -> Unit, onEndSession: () -
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = if (result.crewWon) "The imposter was caught!" else "The imposters slipped away.",
+                text = subtitle,
                 color = TextSecondary,
                 fontSize = 15.sp,
                 textAlign = TextAlign.Center,
@@ -97,20 +119,33 @@ fun ResultScreen(state: GameUiState, onPlayAgain: () -> Unit, onEndSession: () -
                     LabelValue("Category", result.category)
                     Spacer(Modifier.height(10.dp))
                     Text(
-                        text = if (result.imposters.size == 1) "Imposter" else "Imposters",
+                        text = when {
+                            result.imposters.isEmpty() -> "Imposters"
+                            result.imposters.size == 1 -> "Imposter"
+                            else -> "Imposters (${result.imposters.size})"
+                        },
                         color = TextSecondary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
                         letterSpacing = 2.sp,
                     )
                     Spacer(Modifier.height(4.dp))
-                    result.imposters.forEach { p ->
+                    if (result.imposters.isEmpty()) {
                         Text(
-                            text = "🃏 ${p.name}",
-                            color = ImposterRed,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
+                            text = "— none —",
+                            color = TextSecondary,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Medium,
                         )
+                    } else {
+                        result.imposters.forEach { p ->
+                            Text(
+                                text = "🃏 ${p.name}",
+                                color = ImposterRed,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
                     }
                     if (result.accusedPlayer != null) {
                         Spacer(Modifier.height(10.dp))

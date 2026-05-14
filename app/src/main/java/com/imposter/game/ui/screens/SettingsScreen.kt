@@ -54,7 +54,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     playerCount: Int,
 ) {
-    val maxImposters = max(1, playerCount / 2)
+    val maxImposters = playerCount.coerceAtLeast(0)
 
     GradientBackground {
         Column(
@@ -96,38 +96,38 @@ fun SettingsScreen(
                     ImposterCountMode.FIXED -> item {
                         Stepper(
                             label = "Imposters per round",
-                            value = settings.fixedImposters,
-                            min = 1,
+                            value = settings.fixedImposters.coerceIn(0, maxImposters),
+                            min = 0,
                             max = maxImposters,
                             onChange = { onChange(settings.copy(fixedImposters = it)) },
-                            sublabel = "Max ${maxImposters} for $playerCount players",
+                            sublabel = describeImposters(settings.fixedImposters, playerCount),
                         )
                     }
                     ImposterCountMode.RANDOM -> {
                         item {
                             Stepper(
                                 label = "Minimum imposters",
-                                value = settings.randomMin,
-                                min = 1,
-                                max = settings.randomMax,
+                                value = settings.randomMin.coerceIn(0, maxImposters),
+                                min = 0,
+                                max = settings.randomMax.coerceAtMost(maxImposters),
                                 onChange = { onChange(settings.copy(randomMin = it)) },
                             )
                         }
                         item {
                             Stepper(
                                 label = "Maximum imposters",
-                                value = settings.randomMax,
+                                value = settings.randomMax.coerceIn(settings.randomMin, maxImposters),
                                 min = settings.randomMin,
                                 max = maxImposters,
                                 onChange = { onChange(settings.copy(randomMax = it)) },
-                                sublabel = "Picked at random when round starts",
+                                sublabel = "Picked at random each round (range: $playerCount players max)",
                             )
                         }
                     }
                     ImposterCountMode.AUTO -> item {
                         InfoCard(
                             title = "Auto-scaled",
-                            text = "The number of imposters is randomized based on total players each round. Bigger groups get more imposters.",
+                            text = "Imposter count is randomized each round based on the total players. Bigger groups get more imposters.",
                         )
                     }
                 }
@@ -165,6 +165,13 @@ fun SettingsScreen(
             }
         }
     }
+}
+
+private fun describeImposters(count: Int, playerCount: Int): String = when {
+    count <= 0 -> "0 — Safe round, no imposter"
+    count >= playerCount && playerCount > 0 -> "$count — Everyone is the imposter!"
+    count == 1 -> "1 imposter among $playerCount players"
+    else -> "$count imposters among $playerCount players"
 }
 
 @Composable

@@ -13,8 +13,6 @@ import com.imposter.game.model.WinResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlin.math.max
-import kotlin.math.min
 import kotlin.random.Random
 
 data class GameUiState(
@@ -67,6 +65,22 @@ class GameViewModel : ViewModel() {
         _state.value = _state.value.copy(settings = transform(_state.value.settings))
     }
 
+    fun reconcileSettings(playerCount: Int) {
+        val s = _state.value.settings
+        val fixed = s.fixedImposters.coerceIn(0, playerCount)
+        val randomMin = s.randomMin.coerceIn(0, playerCount)
+        val randomMax = s.randomMax.coerceIn(randomMin, playerCount)
+        if (fixed != s.fixedImposters || randomMin != s.randomMin || randomMax != s.randomMax) {
+            _state.value = _state.value.copy(
+                settings = s.copy(
+                    fixedImposters = fixed,
+                    randomMin = randomMin,
+                    randomMax = randomMax,
+                ),
+            )
+        }
+    }
+
     fun resetSession() {
         _state.value = _state.value.copy(
             players = _state.value.players.map { it.copy(score = 0) },
@@ -103,7 +117,8 @@ class GameViewModel : ViewModel() {
             )
         }
 
-        val firstClueGiver = roundPlayers.first { it.role !is Role.Imposter }.player
+        val firstClueGiver = roundPlayers.firstOrNull { it.role !is Role.Imposter }?.player
+            ?: roundPlayers.first().player
 
         _state.value = current.copy(
             phase = GamePhase.REVEAL,
@@ -117,21 +132,23 @@ class GameViewModel : ViewModel() {
     }
 
     private fun computeImposterCount(settings: GameSettings, playerCount: Int): Int {
-        val maxAllowed = max(1, playerCount / 2)
+        val maxAllowed = playerCount
         return when (settings.imposterMode) {
-            ImposterCountMode.FIXED -> min(settings.fixedImposters, maxAllowed).coerceAtLeast(1)
+            ImposterCountMode.FIXED -> settings.fixedImposters.coerceIn(0, maxAllowed)
             ImposterCountMode.RANDOM -> {
-                val lo = min(settings.randomMin, maxAllowed).coerceAtLeast(1)
-                val hi = min(settings.randomMax, maxAllowed).coerceAtLeast(lo)
-                Random.nextInt(lo, hi + 1)
+                val lo = settings.randomMin.coerceIn(0, maxAllowed)
+                val hi = settings.randomMax.coerceIn(lo, maxAllowed)
+                if (lo == hi) lo else Random.nextInt(lo, hi + 1)
             }
             ImposterCountMode.AUTO -> {
-                when {
-                    playerCount <= 4 -> 1
-                    playerCount <= 7 -> Random.nextInt(1, 3)
-                    playerCount <= 10 -> Random.nextInt(1, 4)
-                    else -> Random.nextInt(2, 5)
-                }.coerceAtMost(maxAllowed)
+                val auto = when {
+                    playerCount <= 3 -> 1
+                    playerCount <= 5 -> Random.nextInt(1, 3)
+                    playerCount <= 8 -> Random.nextInt(1, 4)
+                    playerCount <= 12 -> Random.nextInt(2, 5)
+                    else -> Random.nextInt(2, 6)
+                }
+                auto.coerceIn(0, maxAllowed)
             }
         }
     }
@@ -161,7 +178,12 @@ class GameViewModel : ViewModel() {
         val imposters = current.roundPlayers
             .filter { it.role is Role.Imposter }
             .map { it.player }
-        val crewWon = player != null && imposters.any { it.id == player.id }
+        val totalPlayers = current.players.size
+        val crewWon = when {
+            imposters.isEmpty() -> true
+            imposters.size == totalPlayers -> false
+            else -> player != null && imposters.any { it.id == player.id }
+        }
         val result = WinResult(
             crewWon = crewWon,
             accusedPlayer = player,
@@ -171,9 +193,12 @@ class GameViewModel : ViewModel() {
         )
 
         val updatedPlayers = current.players.map { p ->
+            val isImposter = imposters.any { it.id == p.id }
             val gain = when {
-                crewWon && imposters.none { it.id == p.id } -> 1
-                !crewWon && imposters.any { it.id == p.id } -> 2
+                imposters.isEmpty() -> 1
+                imposters.size == totalPlayers -> 2
+                crewWon && !isImposter -> 1
+                !crewWon && isImposter -> 2
                 else -> 0
             }
             if (gain > 0) p.copy(score = p.score + gain) else p

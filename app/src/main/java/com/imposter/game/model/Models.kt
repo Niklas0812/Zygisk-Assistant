@@ -28,7 +28,7 @@ data class GameSettings(
     val fixedImposters: Int = 1,
     val randomMin: Int = 1,
     val randomMax: Int = 2,
-    val selectedCategoryIds: Set<String> = setOf("animals", "food", "places", "objects", "sports"),
+    val selectedCategoryIds: Set<String> = setOf("tiere", "essen", "orte", "gegenstaende", "sport", "lustiges"),
     val imposterKnowsCategory: Boolean = true,
     val showClueOrder: Boolean = true,
 )

@@ -44,6 +44,14 @@ import com.imposter.game.viewmodel.GameUiState
 fun CluesScreen(state: GameUiState, onGoToVote: () -> Unit) {
     val showOrder = state.settings.showClueOrder
     val firstName = state.firstClueGiver?.name ?: state.players.firstOrNull()?.name ?: ""
+    val totalImposters = state.roundPlayers.count { it.role is com.imposter.game.model.Role.Imposter }
+    val total = state.roundPlayers.size
+    val imposterNote = when {
+        totalImposters == 0 -> "Free round — no imposters. Everyone says one word about the secret."
+        totalImposters >= total -> "Chaos round — everyone is an imposter. Bluff or be exposed!"
+        totalImposters == 1 -> "There is 1 imposter among you."
+        else -> "There are $totalImposters imposters among you."
+    }
 
     GradientBackground {
         Column(
@@ -98,11 +106,11 @@ fun CluesScreen(state: GameUiState, onGoToVote: () -> Unit) {
                     )
                     Spacer(Modifier.height(10.dp))
                     Text(
-                        text = "Imposters: bluff a word that sounds like it fits — don't get caught.",
+                        text = imposterNote,
                         color = TextSecondary,
                         fontSize = 14.sp,
                     )
-                    if (showOrder) {
+                    if (showOrder && firstName.isNotBlank()) {
                         Spacer(Modifier.height(14.dp))
                         Text(
                             text = "$firstName goes first.",
