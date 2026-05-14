@@ -8,7 +8,8 @@
 .externalNativeBuild
 .cxx
 local.properties
-*.apk
 *.aab
 /app/release
 /app/build
+# Keep prebuilt APKs under releases/ tracked
+!releases/*.apk
