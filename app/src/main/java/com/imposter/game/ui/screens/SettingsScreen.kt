@@ -29,6 +29,10 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,8 +59,12 @@ fun SettingsScreen(
     onChange: (GameSettings) -> Unit,
     onBack: () -> Unit,
     playerCount: Int,
+    usedWordCount: Int,
+    totalWordPool: Int,
+    onClearHistory: () -> Unit,
 ) {
     val maxImposters = playerCount.coerceAtLeast(0)
+    var showHistoryConfirm by remember { mutableStateOf(false) }
 
     GradientBackground {
         Column(
@@ -173,6 +181,15 @@ fun SettingsScreen(
                     )
                 }
 
+                item { SectionTitle("Wortverlauf") }
+                item {
+                    HistoryCard(
+                        usedCount = usedWordCount,
+                        totalPool = totalWordPool,
+                        onClear = { showHistoryConfirm = true },
+                    )
+                }
+
                 item { SectionTitle("Kategorien") }
                 items(WordCategories.all, key = { it.id }) { cat ->
                     CategoryRow(
@@ -184,6 +201,127 @@ fun SettingsScreen(
                             onChange(settings.copy(selectedCategoryIds = ids))
                         },
                     )
+                }
+            }
+        }
+    }
+
+    if (showHistoryConfirm) {
+        ConfirmDialog(
+            title = "Wortverlauf löschen?",
+            message = "Bereits gespielte Wörter werden wieder freigegeben.",
+            confirmLabel = "Löschen",
+            onConfirm = {
+                onClearHistory()
+                showHistoryConfirm = false
+            },
+            onDismiss = { showHistoryConfirm = false },
+        )
+    }
+}
+
+@Composable
+private fun HistoryCard(usedCount: Int, totalPool: Int, onClear: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(BgCard)
+            .padding(16.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Bereits gespielte Wörter",
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = "$usedCount von $totalPool Wörtern verbraucht",
+                    color = TextMuted,
+                    fontSize = 13.sp,
+                )
+            }
+            val enabled = usedCount > 0
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(
+                        if (enabled) com.imposter.game.ui.theme.ImposterRed.copy(alpha = 0.85f)
+                        else Color.White.copy(alpha = 0.06f),
+                    )
+                    .clickable(enabled = enabled) { onClear() }
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+            ) {
+                Text(
+                    text = "Löschen",
+                    color = if (enabled) Color.White else TextMuted,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        val progress = if (totalPool > 0) (usedCount.toFloat() / totalPool).coerceIn(0f, 1f) else 0f
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(Color.White.copy(alpha = 0.08f)),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(progress)
+                    .height(6.dp)
+                    .background(AccentBright),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ConfirmDialog(
+    title: String,
+    message: String,
+    confirmLabel: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .clip(RoundedCornerShape(22.dp))
+                .background(com.imposter.game.ui.theme.BgMid)
+                .padding(20.dp),
+        ) {
+            Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            Text(message, color = TextSecondary, fontSize = 14.sp)
+            Spacer(Modifier.height(20.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color.White.copy(alpha = 0.08f))
+                        .clickable { onDismiss() }
+                        .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("Abbrechen", color = Color.White, fontWeight = FontWeight.SemiBold)
+                }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(com.imposter.game.ui.theme.ImposterRed)
+                        .clickable { onConfirm() }
+                        .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(confirmLabel, color = Color.White, fontWeight = FontWeight.Bold)
                 }
             }
         }

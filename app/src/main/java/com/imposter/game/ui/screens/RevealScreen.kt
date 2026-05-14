@@ -1,12 +1,8 @@
 package com.imposter.game.ui.screens
 
-import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +19,7 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -48,7 +46,6 @@ import com.imposter.game.ui.theme.ImposterRed
 import com.imposter.game.ui.theme.TextMuted
 import com.imposter.game.ui.theme.TextSecondary
 import com.imposter.game.viewmodel.GameUiState
-import kotlinx.coroutines.delay
 
 @Composable
 fun RevealScreen(
@@ -59,12 +56,17 @@ fun RevealScreen(
     val roundPlayer = state.roundPlayers.getOrNull(state.currentRevealIndex) ?: return
     var revealing by remember(state.currentRevealIndex) { mutableStateOf(false) }
     var revealed by remember(state.currentRevealIndex) { mutableStateOf(false) }
+    val rotation = remember(state.currentRevealIndex) { Animatable(0f) }
 
-    androidx.compose.runtime.LaunchedEffect(revealing) {
-        if (revealing && !revealed) {
-            delay(150)
-            onMarkRevealed()
-            revealed = true
+    LaunchedEffect(revealing) {
+        if (revealing) {
+            rotation.animateTo(180f, tween(500))
+            if (!revealed) {
+                onMarkRevealed()
+                revealed = true
+            }
+        } else {
+            rotation.animateTo(0f, tween(380))
         }
     }
 
@@ -85,7 +87,7 @@ fun RevealScreen(
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = "Reiche das Handy an",
+                text = "Handy an",
                 color = TextSecondary,
                 fontSize = 16.sp,
             )
@@ -106,34 +108,16 @@ fun RevealScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            Box(
+            FlippableCard(
+                rotation = rotation.value,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f)
-                    .clip(RoundedCornerShape(28.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                AnimatedContent(
-                    targetState = revealing,
-                    transitionSpec = {
-                        fadeIn(tween(220)) togetherWith fadeOut(tween(220))
-                    },
-                    label = "reveal",
-                ) { isRevealing ->
-                    if (!isRevealing) {
-                        TapToRevealCard(
-                            onPressStart = { revealing = true },
-                            onPressEnd = {
-                                if (revealed) {
-                                    revealing = false
-                                }
-                            },
-                        )
-                    } else {
-                        RoleCard(role = roundPlayer.role, categoryName = state.category?.name ?: "")
-                    }
-                }
-            }
+                    .weight(1f),
+                onPressStart = { revealing = true },
+                onPressEnd = { if (revealed) revealing = false },
+                front = { TapToRevealCard() },
+                back = { RoleCard(role = roundPlayer.role, categoryName = state.category?.name ?: "") },
+            )
 
             Spacer(Modifier.height(20.dp))
 
@@ -144,7 +128,7 @@ fun RevealScreen(
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = if (roundPlayer.revealed) "Nicht auf die Karten der anderen schauen!" else "Karte gedrückt halten, um deine Rolle zu sehen",
+                text = if (roundPlayer.revealed) "Nicht spicken!" else "Karte halten",
                 color = TextMuted,
                 fontSize = 13.sp,
             )
@@ -154,15 +138,22 @@ fun RevealScreen(
 }
 
 @Composable
-private fun TapToRevealCard(onPressStart: () -> Unit, onPressEnd: () -> Unit) {
+private fun FlippableCard(
+    rotation: Float,
+    modifier: Modifier = Modifier,
+    onPressStart: () -> Unit,
+    onPressEnd: () -> Unit,
+    front: @Composable () -> Unit,
+    back: @Composable () -> Unit,
+) {
+    val showBack = rotation > 90f
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Brush.linearGradient(
-                    listOf(BgCard, Accent.copy(alpha = 0.45f)),
-                ),
-            )
+        modifier = modifier
+            .graphicsLayer {
+                rotationY = rotation
+                cameraDistance = 14f * density
+            }
+            .clip(RoundedCornerShape(28.dp))
             .pointerInput(Unit) {
                 awaitPointerEventScope {
                     while (true) {
@@ -174,6 +165,27 @@ private fun TapToRevealCard(onPressStart: () -> Unit, onPressEnd: () -> Unit) {
             },
         contentAlignment = Alignment.Center,
     ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { rotationY = if (showBack) 180f else 0f },
+            contentAlignment = Alignment.Center,
+        ) {
+            if (showBack) back() else front()
+        }
+    }
+}
+
+@Composable
+private fun TapToRevealCard() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.linearGradient(listOf(BgCard, Accent.copy(alpha = 0.55f))),
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(
                 imageVector = Icons.Filled.Visibility,
@@ -183,15 +195,15 @@ private fun TapToRevealCard(onPressStart: () -> Unit, onPressEnd: () -> Unit) {
             )
             Spacer(Modifier.height(12.dp))
             Text(
-                text = "HALTEN ZUM AUFDECKEN",
+                text = "AUFDECKEN",
                 color = Color.White,
-                fontSize = 22.sp,
+                fontSize = 28.sp,
                 fontWeight = FontWeight.ExtraBold,
-                letterSpacing = 3.sp,
+                letterSpacing = 4.sp,
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(6.dp))
             Text(
-                text = "Achte darauf, dass keiner zuschaut",
+                text = "Karte halten",
                 color = TextSecondary,
                 fontSize = 14.sp,
             )
@@ -221,17 +233,16 @@ private fun RoleCard(role: Role, categoryName: String) {
                 fontSize = 56.sp,
             )
             Spacer(Modifier.height(12.dp))
-            Text(
-                text = if (isImposter) "DU BIST DER IMPOSTER" else "Dein Wort",
-                color = Color.White,
-                fontSize = if (isImposter) 22.sp else 18.sp,
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = 2.sp,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(Modifier.height(16.dp))
             when (role) {
                 is Role.Crew -> {
+                    Text(
+                        text = "Dein Wort",
+                        color = Color.White.copy(alpha = 0.9f),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 3.sp,
+                    )
+                    Spacer(Modifier.height(10.dp))
                     Text(
                         text = role.word,
                         color = Color.White,
@@ -248,17 +259,24 @@ private fun RoleCard(role: Role, categoryName: String) {
                 }
                 Role.Imposter -> {
                     Text(
-                        text = "Bluffe ein Wort, das zur Kategorie passt.\nLass dich nicht erwischen!",
+                        text = "IMPOSTER",
                         color = Color.White,
-                        fontSize = 16.sp,
-                        textAlign = TextAlign.Center,
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 4.sp,
                     )
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(14.dp))
                     Text(
-                        text = "Kategorie: $categoryName",
+                        text = categoryName,
                         color = Color.White,
-                        fontSize = 18.sp,
+                        fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = "Bluffe ein Wort.",
+                        color = Color.White.copy(alpha = 0.85f),
+                        fontSize = 14.sp,
                     )
                 }
             }
@@ -282,3 +300,4 @@ private fun ProgressDots(total: Int, current: Int) {
         }
     }
 }
+

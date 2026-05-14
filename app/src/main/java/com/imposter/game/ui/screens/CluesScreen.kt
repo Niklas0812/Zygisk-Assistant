@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.HowToVote
 import androidx.compose.material.icons.filled.Pause
@@ -35,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -230,6 +232,18 @@ private fun TimerBar(
         secondsLeft <= 20 -> Gold
         else -> AccentBright
     }
+    val pulse = if (!timeUp && secondsLeft in 1..10) {
+        val transition = androidx.compose.animation.core.rememberInfiniteTransition(label = "low-time")
+        transition.animateFloat(
+            initialValue = 1f,
+            targetValue = 1.15f,
+            animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+                animation = androidx.compose.animation.core.tween(500),
+                repeatMode = androidx.compose.animation.core.RepeatMode.Reverse,
+            ),
+            label = "pulse",
+        ).value
+    } else 1f
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -243,7 +257,9 @@ private fun TimerBar(
                 color = timeColor,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.ExtraBold,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .scale(pulse),
             )
             Box(
                 modifier = Modifier

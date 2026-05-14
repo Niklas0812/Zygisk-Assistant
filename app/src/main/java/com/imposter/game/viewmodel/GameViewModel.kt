@@ -1,6 +1,8 @@
 package com.imposter.game.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import com.imposter.game.data.UsedWordsRepository
 import com.imposter.game.data.WordCategories
 import com.imposter.game.data.WordCategory
 import com.imposter.game.model.GamePhase
@@ -27,24 +29,32 @@ data class GameUiState(
     val lastWinResult: WinResult? = null,
     val roundNumber: Int = 0,
     val nextStarter: Player? = null,
+    val historyJustReset: Boolean = false,
 )
 
-class GameViewModel : ViewModel() {
+class GameViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val usedRepo = UsedWordsRepository(application)
 
     private val _state = MutableStateFlow(GameUiState())
     val state: StateFlow<GameUiState> = _state.asStateFlow()
 
+    val usedWords: StateFlow<Set<String>> = usedRepo.used
+
     private var nextId: Int = 0
 
     init {
-        addPlayer("Player 1")
-        addPlayer("Player 2")
-        addPlayer("Player 3")
-        addPlayer("Player 4")
+        addPlayer("Spieler 1")
+        addPlayer("Spieler 2")
+        addPlayer("Spieler 3")
+        addPlayer("Spieler 4")
     }
 
-    fun addPlayer(name: String = "Player ${_state.value.players.size + 1}") {
-        val players = _state.value.players + Player(id = nextId++, name = name.ifBlank { "Player ${_state.value.players.size + 1}" })
+    fun addPlayer(name: String = "Spieler ${_state.value.players.size + 1}") {
+        val players = _state.value.players + Player(
+            id = nextId++,
+            name = name.ifBlank { "Spieler ${_state.value.players.size + 1}" },
+        )
         _state.value = _state.value.copy(players = players)
     }
 
@@ -82,6 +92,10 @@ class GameViewModel : ViewModel() {
         }
     }
 
+    fun clearUsedWords() {
+        usedRepo.clear()
+    }
+
     fun resetSession() {
         _state.value = _state.value.copy(
             players = _state.value.players.map { it.copy(score = 0) },
@@ -103,8 +117,17 @@ class GameViewModel : ViewModel() {
             WordCategories.all.filter { it.id in settings.selectedCategoryIds }
         }.ifEmpty { WordCategories.all }
 
-        val category = availableCategories.random()
-        val word = category.words.random()
+        val used = usedRepo.used.value
+        val candidates = availableCategories.flatMap { cat -> cat.words.map { cat to it } }
+        var unused = candidates.filter { (_, w) -> w !in used }
+        var historyReset = false
+        if (unused.isEmpty()) {
+            usedRepo.clear()
+            unused = candidates
+            historyReset = true
+        }
+        val (category, word) = unused.random()
+        usedRepo.markUsed(word)
 
         val imposterCount = computeImposterCount(settings, playerCount)
 
@@ -138,6 +161,7 @@ class GameViewModel : ViewModel() {
             firstClueGiver = firstClueGiver,
             roundNumber = current.roundNumber + 1,
             nextStarter = null,
+            historyJustReset = historyReset,
         )
     }
 
